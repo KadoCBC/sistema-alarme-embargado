@@ -27,15 +27,6 @@ function selectProxyHost(req) {
         req.path.startsWith('/logs/periodo')) {
         return 'http://localhost:8120/'; // Logs service
     }
-    
-    // Endpoints para acionamento
-    if (req.path.startsWith('/acionamento/ativar') || 
-        req.path.startsWith('/acionamento/desativar') ||
-        req.path.startsWith('/acionamento/historico') ||
-        req.path.startsWith('/acionamento/status') ||
-        req.path.startsWith('/acionamento/confirmacao')) {
-        return 'http://localhost:8090/'; // Controle service
-    }
 }
 
 app.use((req, res, next) => {
@@ -52,11 +43,7 @@ app.use((req, res, next) => {
                 'PUT /configuracoes/sistema - Ativar/Desativar sistema',
                 'GET /logs/sensores - Obter histórico de sensores',
                 'GET /logs/estatisticas - Obter estatísticas',
-                'GET /logs/periodo - Obter logs por período',
-                'POST /acionamento/ativar - Ativar sistema',
-                'POST /acionamento/desativar - Desativar sistema',
-                'GET /acionamento/historico - Histórico de acionamentos',
-                'GET /acionamento/status - Status atual do sistema'
+                'GET /logs/periodo - Obter logs por período'
             ]
         });
     } else {
@@ -75,8 +62,4 @@ app.listen(8000, () => {
     console.log('- GET /logs/sensores (App)');
     console.log('- GET /logs/estatisticas (App)');
     console.log('- GET /logs/periodo (App)');
-    console.log('- POST /acionamento/ativar (App)');
-    console.log('- POST /acionamento/desativar (App)');
-    console.log('- GET /acionamento/historico (App)');
-    console.log('- GET /acionamento/status (App)');
 });

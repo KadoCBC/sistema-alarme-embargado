@@ -9,7 +9,7 @@ Sistema de backend distribuído em microserviços para integração entre sistem
 | Serviço | Porta | Descrição |
 |---------|-------|-----------|
 | **API Gateway** | 8000 | Roteamento e proxy de requisições |
-| **Controle Service** | 8090 | Configurações e acionamento do sistema embarcado |
+| **Controle Service** | 8090 | Configurações do sistema embarcado |
 | **Logs Service** | 8120 | Registro de dados de sensores |
 
 ## 🚀 Como Executar
@@ -40,7 +40,7 @@ npm start
 
 # Terminal 2 - Controle Service
 cd backend/alarmes-service
-node cadastro_de_alarmes.js
+node controle.js
 
 # Terminal 3 - Logs Service
 cd backend/logs-service
@@ -76,13 +76,6 @@ node registro_logs.js
     "sistema_ativo": true
   }
   ```
-
-#### Para Acionamento
-- `POST /acionamento/ativar` - Ativar sistema embarcado
-- `POST /acionamento/desativar` - Desativar sistema embarcado
-- `GET /acionamento/historico` - Histórico de acionamentos
-- `GET /acionamento/status` - Status atual do sistema
-- `POST /acionamento/confirmacao` - Confirmação do ESP32
 
 ### 📊 Logs Service (8120)
 
@@ -131,42 +124,27 @@ CREATE TABLE logs (
 );
 ```
 
-### Tabela `acionamentos`
-```sql
-CREATE TABLE acionamentos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tipo_acionamento TEXT NOT NULL,
-    status BOOLEAN DEFAULT 1,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    dados_adicionais TEXT,
-    observacoes TEXT
-);
-```
-
 ## 🔄 Fluxo de Integração
 
 ### 1. ESP32 → Backend
 1. ESP32 consulta `GET /config` para obter configurações
 2. ESP32 envia dados de sensor via `POST /logs/sensor`
-3. ESP32 confirma acionamentos via `POST /acionamento/confirmacao`
 
 ### 2. App Mobile → Backend
 1. App consulta `GET /configuracoes` para obter configurações atuais
 2. App atualiza configurações via `PUT /configuracoes`
 3. App ativa/desativa sistema via `PUT /configuracoes/sistema`
-4. App controla acionamentos via endpoints `/acionamento/*`
-5. App consulta logs via `GET /logs/sensores`
+4. App consulta logs via `GET /logs/sensores`
 
 ### 3. Backend → ESP32
 1. Configurações são lidas pelo ESP32 periodicamente
 2. Logs são registrados automaticamente
-3. Acionamentos são confirmados pelo ESP32
 
 ## 🛠️ Desenvolvimento
 
 ### Adicionando Novos Endpoints
 
-1. **Controle Service**: Adicione endpoints em `alarmes-service/cadastro_de_alarmes.js`
+1. **Controle Service**: Adicione endpoints em `alarmes-service/controle.js`
 2. **Logs Service**: Adicione endpoints em `logs-service/registro_logs.js`
 3. **API Gateway**: Atualize roteamento em `api-gateway/api_gateway.js`
 
@@ -196,11 +174,10 @@ CREATE TABLE acionamentos (
 
 ### Logs dos Serviços
 - **API Gateway**: Logs de roteamento e proxy
-- **Controle Service**: Logs de configurações e acionamentos
+- **Controle Service**: Logs de configurações
 - **Logs Service**: Logs de dados de sensores
 
 ### Endpoints de Status
-- `GET /acionamento/status` - Status do sistema
 - `GET /logs/estatisticas` - Estatísticas de sensores
 
 ## 🚨 TODO

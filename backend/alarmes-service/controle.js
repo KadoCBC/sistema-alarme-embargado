@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3');
-const axios = require('axios');
 
 const app = express();
 app.use(bodyParser.json());
@@ -31,52 +30,6 @@ db.run(`CREATE TABLE IF NOT EXISTS configuracoes (
         throw err;
     }
     console.log('Tabela configuracoes criada/verificada com sucesso!');
-});
-
-// Cria a tabela "alarmes" se não existir - para gerenciamento de alarmes
-db.run(`CREATE TABLE IF NOT EXISTS alarmes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome_local TEXT NOT NULL,
-    status BOOLEAN DEFAULT 1,
-    pontos_monitorados TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`, (err) => {
-    if (err) {
-        console.log('ERRO ao criar tabela alarmes.');
-        throw err;
-    }
-    console.log('Tabela alarmes criada/verificada com sucesso!');
-});
-
-// Cria a tabela "permissoes" se não existir
-db.run(`CREATE TABLE IF NOT EXISTS permissoes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_alarme INTEGER,
-    id_usuario INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_alarme) REFERENCES alarmes (id)
-)`, (err) => {
-    if (err) {
-        console.log('ERRO ao criar tabela permissoes.');
-        throw err;
-    }
-    console.log('Tabela permissoes criada/verificada com sucesso!');
-});
-
-// Cria a tabela "acionamentos" se não existir - para controle de ativação/desativação
-db.run(`CREATE TABLE IF NOT EXISTS acionamentos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tipo_acionamento TEXT NOT NULL,
-    status BOOLEAN DEFAULT 1,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    dados_adicionais TEXT,
-    observacoes TEXT
-)`, (err) => {
-    if (err) {
-        console.log('ERRO ao criar tabela acionamentos.');
-        throw err;
-    }
-    console.log('Tabela acionamentos criada/verificada com sucesso!');
 });
 
 // Inicializa configuração padrão se não existir
@@ -206,203 +159,15 @@ app.put('/configuracoes/sistema', (req, res) => {
         });
 });
 
-// ==================== ENDPOINTS PARA ACIONAMENTO ====================
-
-// POST - Ativar sistema embarcado
-app.post('/acionamento/ativar', async (req, res) => {
-    const { observacoes } = req.body || {};
-
-    try {
-        // Registra o acionamento
-        await new Promise((resolve, reject) => {
-            db.run(
-                `INSERT INTO acionamentos (tipo_acionamento, status, observacoes) 
-                 VALUES (?, ?, ?)`,
-                ['Ativação Sistema', 1, observacoes || 'Ativação manual via API'],
-                function (err) {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
-        // Ativa o sistema nas configurações
-        await new Promise((resolve, reject) => {
-            db.run(
-                `UPDATE configuracoes SET sistema_ativo = 1, updated_at = CURRENT_TIMESTAMP WHERE id = 1`,
-                function (err) {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
-        console.log('Sistema embarcado ativado via API');
-
-        res.status(200).json({
-            message: 'Sistema embarcado ativado com sucesso!',
-            timestamp: new Date().toISOString(),
-            tipo: 'Ativação Sistema'
-        });
-
-    } catch (err) {
-        console.error('Erro ao ativar sistema:', err);
-        res.status(500).send('Erro ao ativar sistema.');
-    }
-});
-
-// POST - Desativar sistema embarcado
-app.post('/acionamento/desativar', async (req, res) => {
-    const { observacoes } = req.body || {};
-
-    try {
-        // Registra o acionamento
-        await new Promise((resolve, reject) => {
-            db.run(
-                `INSERT INTO acionamentos (tipo_acionamento, status, observacoes) 
-                 VALUES (?, ?, ?)`,
-                ['Desativação Sistema', 0, observacoes || 'Desativação manual via API'],
-                function (err) {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
-        // Desativa o sistema nas configurações
-        await new Promise((resolve, reject) => {
-            db.run(
-                `UPDATE configuracoes SET sistema_ativo = 0, updated_at = CURRENT_TIMESTAMP WHERE id = 1`,
-                function (err) {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
-        console.log('Sistema embarcado desativado via API');
-
-        res.status(200).json({
-            message: 'Sistema embarcado desativado com sucesso!',
-            timestamp: new Date().toISOString(),
-            tipo: 'Desativação Sistema'
-        });
-
-    } catch (err) {
-        console.error('Erro ao desativar sistema:', err);
-        res.status(500).send('Erro ao desativar sistema.');
-    }
-});
-
-// GET - Obter histórico de acionamentos
-app.get('/acionamento/historico', (req, res) => {
-    const { limit = 50, offset = 0 } = req.query;
-
-    db.all(
-        `SELECT * FROM acionamentos 
-         ORDER BY timestamp DESC 
-         LIMIT ? OFFSET ?`,
-        [parseInt(limit), parseInt(offset)],
-        (err, result) => {
-            if (err) {
-                console.log('Erro ao obter histórico de acionamentos:', err);
-                res.status(500).send('Erro ao obter histórico de acionamentos.');
-            } else {
-                res.status(200).json({
-                    acionamentos: result,
-                    total: result.length,
-                    limit: parseInt(limit),
-                    offset: parseInt(offset)
-                });
-            }
-        }
-    );
-});
-
-// GET - Obter status atual do sistema
-app.get('/acionamento/status', (req, res) => {
-    db.get(
-        `SELECT * FROM acionamentos 
-         ORDER BY timestamp DESC 
-         LIMIT 1`,
-        [],
-        (err, result) => {
-            if (err) {
-                console.log('Erro ao obter status do sistema:', err);
-                res.status(500).send('Erro ao obter status do sistema.');
-            } else {
-                res.status(200).json({
-                    status: result ? (result.status === 1 ? 'ativo' : 'inativo') : 'desconhecido',
-                    ultimo_acionamento: result ? result.timestamp : null,
-                    tipo_ultimo_acionamento: result ? result.tipo_acionamento : null
-                });
-            }
-        }
-    );
-});
-
-// POST - Receber confirmação de acionamento do ESP32
-app.post('/acionamento/confirmacao', async (req, res) => {
-    const { tipo_acionamento, status, dados_adicionais } = req.body || {};
-
-    try {
-        await new Promise((resolve, reject) => {
-            db.run(
-                `INSERT INTO acionamentos (tipo_acionamento, status, dados_adicionais) 
-                 VALUES (?, ?, ?)`,
-                [
-                    tipo_acionamento || 'Confirmação ESP32',
-                    status ? 1 : 0,
-                    dados_adicionais ? JSON.stringify(dados_adicionais) : null
-                ],
-                function (err) {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-
-        res.status(200).json({
-            message: 'Confirmação de acionamento registrada com sucesso!',
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (err) {
-        console.error('Erro ao registrar confirmação de acionamento:', err);
-        res.status(500).send('Erro ao registrar confirmação de acionamento.');
-    }
-});
-
-// ==================== ENDPOINTS PARA LOGS (INTEGRAÇÃO) ====================
-
-// POST - Receber dados de sensor do ESP32
-app.post('/logs/sensor', (req, res) => {
-    const { movimento_detectado, timestamp } = req.body;
-
-    // TODO: Implementar integração com logs-service
-    // Por enquanto, apenas confirma recebimento
-    console.log('Dados de sensor recebidos:', { movimento_detectado, timestamp });
-    
-    res.status(200).json({
-        message: 'Dados de sensor recebidos com sucesso!',
-        timestamp: new Date().toISOString()
-    });
-});
-
 // Inicia o servidor
 const porta = 8090;
 app.listen(porta, () => {
-    console.log('Microserviço de controle rodando na porta: ' + porta);
+    console.log('Serviço de configuração do embargado rodando na porta: ' + porta);
     console.log('Endpoints disponíveis:');
     console.log('- GET /config (ESP32)');
     console.log('- GET /configuracoes (App)');
     console.log('- PUT /configuracoes (App)');
     console.log('- PUT /configuracoes/sistema (App)');
-    console.log('- POST /acionamento/ativar (App)');
-    console.log('- POST /acionamento/desativar (App)');
-    console.log('- GET /acionamento/historico (App)');
-    console.log('- GET /acionamento/status (App)');
-    console.log('- POST /acionamento/confirmacao (ESP32)');
 });
 
 
