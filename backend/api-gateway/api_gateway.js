@@ -28,28 +28,13 @@ function selectProxyHost(req) {
         return 'http://localhost:8120/'; // Logs service
     }
     
-    // Endpoints para acionamento (agora no serviço de controle)
+    // Endpoints para acionamento
     if (req.path.startsWith('/acionamento/ativar') || 
         req.path.startsWith('/acionamento/desativar') ||
         req.path.startsWith('/acionamento/historico') ||
         req.path.startsWith('/acionamento/status') ||
         req.path.startsWith('/acionamento/confirmacao')) {
         return 'http://localhost:8090/'; // Controle service
-    }
-    
-    // Endpoints legados
-    if (req.path.startsWith('/usuarios')) {
-        return 'http://localhost:8080/';
-    } else if (req.path.startsWith('/alarmes')) {
-        return 'http://localhost:8090/';
-    } else if (req.path.startsWith('/acionamento')) {
-        return 'http://localhost:8090/'; // Agora no controle service
-    } else if (req.path.startsWith('/disparo')) {
-        return 'http://localhost:8110/';
-    } else if (req.path.startsWith('/registros')) {
-        return 'http://localhost:8120/';
-    } else {
-        return null;
     }
 }
 
