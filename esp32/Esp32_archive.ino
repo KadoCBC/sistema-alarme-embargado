@@ -149,6 +149,41 @@ void obterConfiguracoesDaAPI() {
   http.end();
 }
 
+void enviarLogSensor(bool movimento) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi não conectado. Não foi possível enviar log.");
+    return;
+  }
+
+  HTTPClient http;
+  String url = String(apiUrl);
+  url.replace("/config", "/logs/sensor");
+
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+
+  StaticJsonDocument<256> doc;
+  doc["movimento_detectado"] = movimento;
+  doc["sistema_ativo"] = sistemaAtivo;
+  doc["tempo_buzzer"] = tempoBuzzer;
+  doc["observacoes"] = "Movimento detectado pelo ESP32";
+
+  String payload;
+  serializeJson(doc, payload);
+
+  int httpCode = http.POST(payload);
+  if (httpCode > 0) {
+    Serial.print("Log enviado. Código HTTP: ");
+    Serial.println(httpCode);
+    String resposta = http.getString();
+    Serial.println("Resposta: " + resposta);
+  } else {
+    Serial.print("Erro ao enviar log. Código HTTP: ");
+    Serial.println(httpCode);
+  }
+  http.end();
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(PIR_PIN, INPUT);
@@ -210,6 +245,9 @@ void loop() {
     digitalWrite(BUZZER_PIN, HIGH);
     delay(tempoBuzzer);
     digitalWrite(BUZZER_PIN, LOW);
+
+    // Enviar log para o backend
+    enviarLogSensor(true);
   } else if (movimento == LOW) {
     Serial.println("Sem Movimento");
     display.clearDisplay();
