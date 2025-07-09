@@ -158,7 +158,7 @@ app.get('/logs/periodo', (req, res) => {
 
 // Inicia o servidor
 const porta = 8120;
-app.listen(porta, () => {
+app.listen(porta, '0.0.0.0', () => {
     console.log('Serviço de logs rodando na porta: ' + porta);
     console.log('Endpoints disponíveis:');
     console.log('- POST /logs/sensor (ESP32)');

@@ -6,6 +6,19 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Adicionar headers CORS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
 // Acessa o arquivo com o banco de dados
 var db = new sqlite3.Database('./dados.db', (err) => {
     if (err) {
@@ -82,8 +95,38 @@ app.get('/configuracoes', (req, res) => {
             console.log('Erro ao obter configurações:', err);
             res.status(500).send('Erro ao obter configurações.');
         } else if (!result) {
-            res.status(404).send('Configuração não encontrada.');
+            // Se não há configuração, cria uma padrão e retorna
+            console.log('Configuração não encontrada, criando configuração padrão...');
+            db.run(`INSERT INTO configuracoes (id, sistema_ativo, tempo_buzzer, sensibilidade, intervalo_consulta) 
+                    VALUES (1, 1, 2000, 50, 10000)`, (err) => {
+                if (err) {
+                    console.log('Erro ao criar configuração padrão:', err);
+                    // Retorna configuração padrão mesmo com erro
+                    res.status(200).json({
+                        id: 1,
+                        sistema_ativo: true,
+                        tempo_buzzer: 2000,
+                        sensibilidade: 50,
+                        intervalo_consulta: 10000,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+                } else {
+                    console.log('Configuração padrão criada com sucesso!');
+                    // Retorna a configuração padrão criada
+                    res.status(200).json({
+                        id: 1,
+                        sistema_ativo: true,
+                        tempo_buzzer: 2000,
+                        sensibilidade: 50,
+                        intervalo_consulta: 10000,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+                }
+            });
         } else {
+            // Retorna a configuração existente
             res.status(200).json({
                 id: result.id,
                 sistema_ativo: result.sistema_ativo === 1,
@@ -107,28 +150,56 @@ app.put('/configuracoes', (req, res) => {
     const tempo_buzzer = variavel2 || 2000;
     const intervalo_consulta = variavel3 || 10000;
 
-    db.run(`UPDATE configuracoes SET 
-            sensibilidade = ?, 
-            tempo_buzzer = ?, 
-            intervalo_consulta = ?,
-            updated_at = CURRENT_TIMESTAMP
-            WHERE id = 1`,
-        [sensibilidade, tempo_buzzer, intervalo_consulta],
-        function (err) {
-            if (err) {
-                console.log('Erro ao atualizar configurações:', err);
-                res.status(500).send('Erro ao atualizar configurações.');
-            } else if (this.changes === 0) {
-                res.status(404).send('Configuração não encontrada.');
-            } else {
-                res.status(200).json({
-                    message: 'Configurações atualizadas com sucesso!',
-                    variavel1: sensibilidade,
-                    variavel2: tempo_buzzer,
-                    variavel3: intervalo_consulta
+    // Primeiro verifica se existe configuração
+    db.get('SELECT id FROM configuracoes WHERE id = 1', [], (err, result) => {
+        if (err) {
+            console.log('Erro ao verificar configuração:', err);
+            res.status(500).send('Erro ao verificar configuração.');
+        } else if (!result) {
+            // Se não existe, cria uma nova configuração
+            console.log('Configuração não encontrada, criando nova configuração...');
+            db.run(`INSERT INTO configuracoes (id, sistema_ativo, tempo_buzzer, sensibilidade, intervalo_consulta) 
+                    VALUES (1, 1, ?, ?, ?)`,
+                [tempo_buzzer, sensibilidade, intervalo_consulta],
+                function (err) {
+                    if (err) {
+                        console.log('Erro ao criar configuração:', err);
+                        res.status(500).send('Erro ao criar configuração.');
+                    } else {
+                        console.log('Configuração criada com sucesso!');
+                        res.status(200).json({
+                            message: 'Configurações criadas com sucesso!',
+                            variavel1: sensibilidade,
+                            variavel2: tempo_buzzer,
+                            variavel3: intervalo_consulta
+                        });
+                    }
                 });
-            }
-        });
+        } else {
+            // Se existe, atualiza a configuração
+            db.run(`UPDATE configuracoes SET 
+                    sensibilidade = ?, 
+                    tempo_buzzer = ?, 
+                    intervalo_consulta = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                    WHERE id = 1`,
+                [sensibilidade, tempo_buzzer, intervalo_consulta],
+                function (err) {
+                    if (err) {
+                        console.log('Erro ao atualizar configurações:', err);
+                        res.status(500).send('Erro ao atualizar configurações.');
+                    } else {
+                        console.log('Configurações atualizadas com sucesso!');
+                        res.status(200).json({
+                            message: 'Configurações atualizadas com sucesso!',
+                            variavel1: sensibilidade,
+                            variavel2: tempo_buzzer,
+                            variavel3: intervalo_consulta
+                        });
+                    }
+                });
+        }
+    });
 });
 
 // PUT - Ativar/Desativar sistema
@@ -161,7 +232,7 @@ app.put('/configuracoes/sistema', (req, res) => {
 
 // Inicia o servidor
 const porta = 8090;
-app.listen(porta, () => {
+app.listen(porta, '0.0.0.0', () => {
     console.log('Serviço de configuração do embargado rodando na porta: ' + porta);
     console.log('Endpoints disponíveis:');
     console.log('- GET /config (ESP32)');

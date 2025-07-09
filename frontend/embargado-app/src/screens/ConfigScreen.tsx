@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,85 +8,114 @@ import {
 } from 'react-native';
 import SimpleButton from '../components/SimpleButton';
 import SimpleInput from '../components/SimpleInput';
+import { API_BASE_URL } from '../config/api';
 
 const ConfigScreen: React.FC = () => {
-  // Estados para as 3 variáveis de configuração
+  // Estado para as 3 variáveis
   const [config, setConfig] = useState({
-    variavel1: 50,
-    variavel2: 30,
-    variavel3: 75,
+    variavel1: 0,
+    variavel2: 0,
+    variavel3: 0,
   });
-
   const [loading, setLoading] = useState(false);
 
-  // Salvar configurações
+  // Buscar configurações atuais ao abrir a tela
+  useEffect(() => {
+    console.log('Tentando carregar configurações de:', `${API_BASE_URL}/configuracoes`);
+    
+    fetch(`${API_BASE_URL}/configuracoes`)
+      .then(res => {
+        console.log('Resposta do servidor:', res.status, res.statusText);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log('Dados recebidos:', data);
+        setConfig({
+          variavel1: data.sensibilidade || 0,
+          variavel2: data.tempo_buzzer || 0,
+          variavel3: data.intervalo_consulta || 0,
+        });
+      })
+      .catch((error) => {
+        console.error('Erro ao carregar configurações:', error);
+        Alert.alert('Erro', `Não foi possível carregar as configurações: ${error.message}`);
+      });
+  }, []);
+
+  // Função para salvar configurações
   const saveConfig = () => {
     setLoading(true);
-    // Simular delay
-    setTimeout(() => {
-      setLoading(false);
-      Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
-    }, 1000);
+    console.log('Tentando salvar configurações:', config);
+    
+    fetch(`${API_BASE_URL}/configuracoes`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        variavel1: config.variavel1,
+        variavel2: config.variavel2,
+        variavel3: config.variavel3,
+      }),
+    })
+      .then(res => {
+        console.log('Resposta do servidor (salvar):', res.status, res.statusText);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        console.log('Configurações salvas com sucesso:', data);
+        Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
+      })
+      .catch((error) => {
+        console.error('Erro ao salvar configurações:', error);
+        Alert.alert('Erro', `Não foi possível salvar as configurações: ${error.message}`);
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
     <ScrollView style={styles.container}>
-      {/* Título */}
       <View style={styles.header}>
-        <Text style={styles.title}>Configuração do Alarme</Text>
+        <Text style={styles.title}>🔒 Configuração do Alarme</Text>
         <Text style={styles.subtitle}>Ajuste os parâmetros do sistema</Text>
       </View>
-
-      {/* Configurações */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Parâmetros de Configuração</Text>
-        
         <SimpleInput
           label="Variável 1"
           value={config.variavel1.toString()}
-          onChangeText={(text) => setConfig({ ...config, variavel1: parseInt(text) || 0 })}
+          onChangeText={text => setConfig({ ...config, variavel1: parseInt(text) || 0 })}
           placeholder="50"
           keyboardType="numeric"
         />
-
         <SimpleInput
           label="Variável 2"
           value={config.variavel2.toString()}
-          onChangeText={(text) => setConfig({ ...config, variavel2: parseInt(text) || 0 })}
+          onChangeText={text => setConfig({ ...config, variavel2: parseInt(text) || 0 })}
           placeholder="30"
           keyboardType="numeric"
         />
-
         <SimpleInput
           label="Variável 3"
           value={config.variavel3.toString()}
-          onChangeText={(text) => setConfig({ ...config, variavel3: parseInt(text) || 0 })}
+          onChangeText={text => setConfig({ ...config, variavel3: parseInt(text) || 0 })}
           placeholder="75"
           keyboardType="numeric"
         />
       </View>
-
-      {/* Botão Salvar */}
       <View style={styles.section}>
         <SimpleButton
           title="Salvar Configurações"
           onPress={saveConfig}
           loading={loading}
         />
-      </View>
-
-      {/* Informações */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Informações</Text>
-        <Text style={styles.infoText}>
-          Configure os parâmetros do sistema de alarme embargado.
-          {'\n\n'}
-          • Variável 1: Parâmetro de sensibilidade
-          {'\n'}
-          • Variável 2: Parâmetro de tempo
-          {'\n'}
-          • Variável 3: Parâmetro de intensidade
-        </Text>
       </View>
     </ScrollView>
   );

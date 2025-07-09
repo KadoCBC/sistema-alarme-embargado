@@ -5,6 +5,19 @@ var logger = require('morgan');
 
 app.use(logger('dev'));
 
+// Adicionar headers CORS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
 function selectProxyHost(req) {
     // Endpoints para sistema embarcado (ESP32)
     if (req.path.startsWith('/config') && req.method === 'GET') {
@@ -51,7 +64,7 @@ app.use((req, res, next) => {
     }
 });
 
-app.listen(8000, () => {
+app.listen(8000, '0.0.0.0', () => {
     console.log('API Gateway iniciado na porta 8000!');
     console.log('Endpoints disponíveis:');
     console.log('- GET /config (ESP32)');
