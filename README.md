@@ -219,18 +219,3 @@ curl http://localhost:8120/logs/sensores
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
-## 👥 Autores
-
-- **Seu Nome** - *Desenvolvimento inicial* - [SeuGitHub](https://github.com/seu-usuario)
-
-## 🙏 Agradecimentos
-
-- Comunidade Arduino
-- Documentação do ESP32
-- Expo para React Native
-- Comunidade Node.js
-
----
-
-**Sistema de Alarme Embargado - Projeto Final** 🔔 
